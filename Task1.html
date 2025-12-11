@@ -1,0 +1,98 @@
+<!--
+Realtime Stock & Crypto Dashboard
+Single-file HTML + CSS + JS
+
+Usage:
+ - Crypto (real-time): works out-of-the-box via Binance WebSocket.
+ - Stocks (real-time): uses Finnhub WebSocket; set your API key at the top of the script.
+   Get a free key at https://finnhub.io (replace FINNHUB_API_KEY in the code).
+
+Features:
+ - Add/remove tracked symbols
+ - Live price updates and 30-point sparkline chart per asset
+ - Shows percent change and last update time
+ - Simple, responsive UI
+
+AI prompt (use this to regenerate or ask an AI to extend this):
+"Create a responsive single-file HTML dashboard that shows real-time stock and crypto prices. The dashboard should allow users to add/remove tickers, display live price, percent change, and a small sparkline chart for each asset. Use public WebSocket streams for crypto (Binance) and a placeholder for stock WebSocket with instructions to insert an API key (e.g., Finnhub). Include graceful fallback to short polling if WebSocket isn't available. Use Chart.js for sparklines and vanilla JavaScript. Provide clean CSS, mobile-friendly layout, and comments in the code."
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Realtime Stock & Crypto Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#0f1724;--card:#101826;--muted:#9aa4b2;--accent:#00d1b2}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#071021 0%,#071827 100%);color:#e6eef6}
+    .container{max-width:1100px;margin:28px auto;padding:18px}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    h1{font-size:20px;margin:0}
+    p.hint{margin:0;color:var(--muted);font-size:13px}
+    .board{display:grid;grid-template-columns:1fr 360px;gap:18px;margin-top:18px}
+    .panel{background:var(--card);border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(6,9,16,0.6)}
+    .controls{display:flex;gap:8px;margin-bottom:12px}
+    .controls input, .controls select{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .controls button{padding:8px 12px;border-radius:8px;border:none;background:var(--accent);color:#042022;font-weight:600}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .asset{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent)}
+    .asset .meta{flex:1;min-width:0}
+    .symbol{font-weight:700}
+    .name{color:var(--muted);font-size:13px}
+    .price{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    .change.up{color:#2fd27a}
+    .change.down{color:#ff6b6b}
+    .small{font-size:12px;color:var(--muted)}
+    .right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+    canvas{width:120px;height:36px}
+    /* responsive */
+    @media (max-width:900px){.board{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Realtime Stock & Crypto Dashboard</h1>
+        <p class="hint">Crypto stream via Binance (no key). Stocks via Finnhub WebSocket — add your API key in the script.</p>
+      </div>
+      <div>
+        <small class="small">Example: crypto symbols use lowercase like <code>btcusdt</code>; stocks use uppercase like <code>AAPL</code>.</small>
+      </div>
+    </header>
+
+    <div class="board">
+      <section class="panel">
+        <div class="controls">
+          <input id="symbolInput" placeholder="Add symbol: e.g. btcusdt or AAPL" />
+          <select id="typeSelect">
+            <option value="crypto">Crypto (Binance)</option>
+            <option value="stock">Stock (Finnhub)</option>
+          </select>
+          <button id="addBtn">Add</button>
+        </div>
+
+        <div class="list" id="assetsList">
+          <!-- assets will be appended here -->
+        </div>
+
+      </section>
+
+      <aside class="panel">
+        <h3 style="margin:0 0 10px 0">Connection & Tips</h3>
+        <p class="small">Crypto WebSocket: <code>wss://stream.binance.com:9443/ws/{symbol}@trade</code></p>
+        <p class="small">Stock WebSocket (Finnhub): <code>wss://ws.finnhub.io?token=YOUR_KEY</code></p>
+        <p class="small">If you don't have a Finnhub key, the dashboard will poll sample data every 5s instead (demo mode).</p>
+        <hr style="margin:10px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)">
+        <div id="statusBox" class="small">Status: <span id="status">idle</span></div>
+        <div style="margin-top:12px;"><button id="clearBtn">Clear All</button></div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // USER CONFIG: replace with your Finnhub API key to enable stock WebSocket
+    const FINNHUB_API_KEY = ""; // <
