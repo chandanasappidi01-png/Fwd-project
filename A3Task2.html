@@ -1,0 +1,105 @@
+<!--
+Online Gaming Leaderboard & Event Tracker
+Single-file HTML + CSS + JS
+
+Features:
+ - Leaderboard: add players, set/update scores, sort by score, search and filter by team or status
+ - Event tracker: create game events/tournaments with start/end times, status (upcoming, live, finished)
+ - Real-time demo: simulated live updates toggle (no server required). Optional WebSocket hooks provided for real realtime integration.
+ - Persistence: data saved to localStorage so the page remembers players & events
+ - Export/Import CSV for leaderboard and events
+ - Small bar chart showing top players using Chart.js
+ - Accessible, mobile-friendly layout and comments throughout
+
+AI prompt (use this to regenerate or ask AI to extend):
+"Create a responsive single-file HTML dashboard for an online gaming leaderboard and event tracker. It should allow adding/editing/removing players and events, support live score updates (with a simulated live mode and optional WebSocket integration instructions), show a sortable/searchable leaderboard, event filtering (upcoming/live/past), CSV import/export, persistence via localStorage, and a visualization of top players using Chart.js. Provide clear CSS, mobile-friendly layout, and in-code comments."
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gaming Leaderboard & Event Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--bg:#0b1220;--card:#0f1724;--muted:#9aa4b2;--accent:#6ee7b7}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#06121a 0%,#071827 100%);color:#e6eef6}
+    .wrap{max-width:1100px;margin:28px auto;padding:16px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{margin:0;font-size:20px}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:16px;margin-top:16px}
+    .card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,10,0.6)}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    input,select,textarea,button{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    button{cursor:pointer}
+    .leaderboard{display:flex;flex-direction:column;gap:8px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.03)}
+    .small{font-size:13px;color:var(--muted)}
+    .row-actions button{margin-right:6px}
+    .status.upcoming{color:#f59e0b}
+    .status.live{color:#10b981}
+    .status.finished{color:#9aa4b2}
+    .topbar{display:flex;gap:8px;align-items:center}
+    canvas{max-width:100%}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Online Gaming Leaderboard & Event Tracker</h1>
+        <div class="small">Add players, run tournaments, simulate live updates, export/import CSV, or wire a real WebSocket for production.</div>
+      </div>
+      <div class="small">Tip: use the simulated live mode to demo score updates.</div>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT: Leaderboard & Events -->
+      <main class="card">
+        <section style="margin-bottom:12px">
+          <div class="topbar">
+            <input id="searchInput" placeholder="Search players or teams" />
+            <select id="sortSelect">
+              <option value="score_desc">Score (high → low)</option>
+              <option value="score_asc">Score (low → high)</option>
+              <option value="name_asc">Name (A → Z)</option>
+            </select>
+            <button id="addPlayerBtn">Add Player</button>
+            <button id="exportPlayersBtn">Export CSV</button>
+            <button id="importPlayersBtn">Import CSV</button>
+          </div>
+        </section>
+
+        <section class="leaderboard">
+          <table id="leaderboardTable" aria-label="Leaderboard">
+            <thead>
+              <tr><th>Player</th><th>Team</th><th>Score</th><th class="small">Last Update</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </section>
+
+        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)" />
+
+        <section>
+          <h3 style="margin:0 0 8px 0">Event Tracker</h3>
+          <div class="topbar" style="margin-bottom:8px">
+            <select id="eventFilter"><option value="all">All</option><option value="upcoming">Upcoming</option><option value="live">Live</option><option value="finished">Finished</option></select>
+            <button id="addEventBtn">Add Event</button>
+            <button id="exportEventsBtn">Export Events</button>
+            <button id="importEventsBtn">Import Events</button>
+          </div>
+
+          <div id="eventsList" style="display:flex;flex-direction:column;gap:8px"></div>
+        </section>
+      </main>
+
+      <!-- RIGHT: Controls, Chart, Simulated Live -->
+      <aside class="card">
+        <h3 style="margin:0 0 8px 0">Top Players</h3>
+        <canvas id="topChart" width="320" height="200"></canvas>
+        <hr style="margin:12px 0;border:none;bord
